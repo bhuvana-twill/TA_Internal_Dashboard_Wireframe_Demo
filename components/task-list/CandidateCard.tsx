@@ -15,8 +15,8 @@ interface CandidateCardProps {
 export function CandidateCard({ candidate, onStatusChange }: CandidateCardProps) {
   const daysInStage = getBusinessDaysSince(candidate.stageEnteredDate);
   const isOverdue =
-    (candidate.currentStage === 'submitted_referral' && daysInStage > 2) ||
-    (candidate.currentStage.includes('screening') && daysInStage > 5);
+    (candidate.currentStage === 'submitted' && daysInStage > 2) ||
+    (['intro_request_made', 'in_client_process'].includes(candidate.currentStage) && daysInStage > 5);
 
   const sourceLabel = {
     member_referral: 'Member Referral',
