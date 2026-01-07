@@ -1,25 +1,41 @@
 'use client';
 
 import Link from 'next/link';
-import { Role, Candidate, Client, PipelineStage } from '@/types';
+import { Role, Candidate, Client, PipelineStage, TalentAdvisor } from '@/types';
 import { Card, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { PriorityBadge } from './PriorityBadge';
 import { Badge } from '@/components/ui/badge';
-import { Users, ArrowRight, Clock, TrendingUp, AlertCircle } from 'lucide-react';
+import { Users, ArrowRight, Clock, TrendingUp, AlertCircle, DollarSign, Target, UserCheck } from 'lucide-react';
 import { PIPELINE_STAGE_LABELS } from '@/lib/constants/pipeline-stages';
 import { getBusinessDaysSince } from '@/lib/utils/date-utils';
+import { calculatePlacementProbability } from '@/lib/utils/probability-utils';
+import { useCurrentUser } from '@/contexts/UserContext';
+import { useData } from '@/contexts/DataContext';
 
 interface RoleCardLinkProps {
   role: Role;
   client: Client;
   candidates: Candidate[];
+  assignedTA?: TalentAdvisor;
 }
 
-export function RoleCardLink({ role, client, candidates }: RoleCardLinkProps) {
+export function RoleCardLink({ role, client, candidates, assignedTA }: RoleCardLinkProps) {
+  const { userRole } = useCurrentUser();
+  const { members } = useData();
   const totalCandidates = candidates.length;
   const activeCandidates = candidates.filter(
     c => !['unqualified', 'rejection_0', 'rejection_1', 'rejection_2', 'signed_offer'].includes(c.currentStage)
   );
+
+  // Calculate probability of placement
+  const placementProbability = calculatePlacementProbability(candidates);
+
+  // Get unique member partners for this role
+  const memberPartners = candidates
+    .filter(c => c.memberPartnerId)
+    .map(c => members.find(m => m.id === c.memberPartnerId))
+    .filter((m, index, self) => m && self.findIndex(x => x?.id === m.id) === index) // Unique partners only
+    .filter(Boolean);
 
   // Group candidates by stage
   const candidatesByStage = candidates.reduce((acc, candidate) => {
@@ -43,12 +59,12 @@ export function RoleCardLink({ role, client, candidates }: RoleCardLinkProps) {
   // Get stages with candidates, limited to most important ones
   const stagesToShow = keyStages
     .filter(stage => candidatesByStage[stage] > 0)
-    .slice(0, 6); // Limit to 6 stages to avoid clutter
+    .slice(0, 4); // Limit to 4 stages to reduce clutter
 
   // Calculate alerts
   const now = new Date();
   const oneDayAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000);
-  
+
   // New candidates submitted in last 24 hours
   const newCandidates = candidates.filter(c => {
     const submittedDate = new Date(c.submittedDate);
@@ -71,84 +87,123 @@ export function RoleCardLink({ role, client, candidates }: RoleCardLinkProps) {
   return (
     <Link href={`/dashboard/role/${role.id}`}>
       <Card className="hover:shadow-lg transition-all cursor-pointer group">
-        <CardHeader>
-          <div className="flex items-start justify-between">
+        <CardHeader className="space-y-4">
+          {/* Header: Company (prominent) + Priority + Alerts */}
+          <div className="flex items-start justify-between gap-3">
             <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-2">
-                <CardTitle className="text-lg truncate">
-                  {role.title}
-                </CardTitle>
-                {alertCount > 0 && (
-                  <Badge variant="destructive" className="h-5 min-w-5 flex items-center justify-center px-1.5 text-xs">
-                    {alertCount}
-                  </Badge>
-                )}
-              </div>
-              <CardDescription className="mt-1 truncate">
+              <CardTitle className="text-xl font-bold truncate mb-1">
                 {client.company}
+              </CardTitle>
+              <CardDescription className="text-base truncate">
+                {role.title}
               </CardDescription>
             </div>
-            <PriorityBadge priority={role.priority} />
+            <div className="flex items-center gap-2 shrink-0">
+              {alertCount > 0 && (
+                <Badge variant="destructive" className="h-6 min-w-6 flex items-center justify-center px-2">
+                  {alertCount}
+                </Badge>
+              )}
+              <PriorityBadge priority={role.priority} />
+            </div>
           </div>
 
-          {/* Time Metrics - Prominent but subtle */}
-          {(role.timeToFirstSubmission || role.timeToFirstQualifiedSubmission || role.timeToFirstFiveQualifiedSubmissions) && (
-            <div className="mt-4 pt-4 border-t">
-              <div className="grid grid-cols-3 gap-2">
-                {role.timeToFirstSubmission !== undefined && (
-                  <div className="text-center">
-                    <div className="text-xs text-muted-foreground mb-1">Time to 1st submit</div>
-                    <div className="font-semibold text-sm">
-                      {role.timeToFirstSubmission}d
-                    </div>
-                  </div>
-                )}
-                {role.timeToFirstQualifiedSubmission !== undefined && (
-                  <div className="text-center">
-                    <div className="text-xs text-muted-foreground mb-1">Time to 1st qualified</div>
-                    <div className="font-semibold text-sm">
-                      {role.timeToFirstQualifiedSubmission}d
-                    </div>
-                  </div>
-                )}
-                {role.timeToFirstFiveQualifiedSubmissions !== undefined && (
-                  <div className="text-center">
-                    <div className="text-xs text-muted-foreground mb-1">Time to 5 qualified</div>
-                    <div className="font-semibold text-sm">
-                      {role.timeToFirstFiveQualifiedSubmissions}d
-                    </div>
-                  </div>
-                )}
+          {/* Key Metrics Row: Revenue + Probability + Total Candidates */}
+          <div className="flex items-center gap-4 text-sm">
+            {role.estimatedRevenue !== undefined && (
+              <div className="flex items-center gap-1.5">
+                <DollarSign className="h-4 w-4 text-muted-foreground" />
+                <span className="font-semibold">${(role.estimatedRevenue / 1000).toFixed(0)}k</span>
               </div>
+            )}
+            {placementProbability > 0 && (
+              <div className="flex items-center gap-1.5">
+                <Target className="h-4 w-4 text-muted-foreground" />
+                <span className="font-semibold">{placementProbability}%</span>
+              </div>
+            )}
+            <div className="flex items-center gap-1.5">
+              <Users className="h-4 w-4 text-muted-foreground" />
+              <span className="text-muted-foreground">{totalCandidates} candidates</span>
+            </div>
+          </div>
+
+          {/* Admin-only: TA + Member Partners */}
+          {userRole === 'admin' && (assignedTA || memberPartners.length > 0) && (
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs bg-muted/30 -mx-6 px-6 py-2">
+              {assignedTA && (
+                <div className="flex items-center gap-1.5">
+                  <span className="text-muted-foreground">TA:</span>
+                  <span className="font-medium">{assignedTA.name}</span>
+                  {memberPartners.length > 0 && (
+                    <>
+                      <span className="text-muted-foreground mx-1.5">•</span>
+                      <span className="text-muted-foreground">Member Partner:</span>
+                      <span className="font-medium">
+                        {memberPartners.slice(0, 2).map(p => p!.name).join(', ')}
+                        {memberPartners.length > 2 && ` +${memberPartners.length - 2}`}
+                      </span>
+                    </>
+                  )}
+                </div>
+              )}
+              {!assignedTA && memberPartners.length > 0 && (
+                <div className="flex items-center gap-1.5">
+                  <UserCheck className="h-3.5 w-3.5 text-muted-foreground" />
+                  <span className="text-muted-foreground">Member Partner:</span>
+                  <span className="font-medium">
+                    {memberPartners.slice(0, 2).map(p => p!.name).join(', ')}
+                    {memberPartners.length > 2 && ` +${memberPartners.length - 2}`}
+                  </span>
+                </div>
+              )}
             </div>
           )}
 
-          {/* Stage Counts - Mini cards */}
+          {/* Time Metrics - Condensed */}
+          {(role.timeToFirstSubmission || role.timeToInClientProcess || role.timeToQualified) && (
+            <div className="flex items-center gap-3 text-xs">
+              <Clock className="h-3.5 w-3.5 text-muted-foreground" />
+              {role.timeToFirstSubmission !== undefined && (
+                <div>
+                  <span className="font-semibold">{role.timeToFirstSubmission}d</span>
+                  <span className="text-muted-foreground ml-1">1st submit</span>
+                </div>
+              )}
+              {role.timeToQualified !== undefined && (
+                <div>
+                  <span className="font-semibold">{role.timeToQualified}d</span>
+                  <span className="text-muted-foreground ml-1">1st qualified</span>
+                </div>
+              )}
+              {role.timeToInClientProcess !== undefined && (
+                <div>
+                  <span className="font-semibold">{role.timeToInClientProcess}d</span>
+                  <span className="text-muted-foreground ml-1">1st in-client process</span>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Pipeline Stages - Compact */}
           {stagesToShow.length > 0 && (
-            <div className="mt-3 pt-3 border-t">
-              <div className="text-xs text-muted-foreground mb-2">Pipeline stages</div>
-              <div className="flex flex-wrap gap-1.5">
-                {stagesToShow.map((stage) => (
-                  <div
-                    key={stage}
-                    className="px-2 py-1 rounded-md bg-muted/50 border border-border text-xs"
-                  >
-                    <span className="font-medium">{candidatesByStage[stage]}</span>
-                    <span className="text-muted-foreground ml-1">
-                      {PIPELINE_STAGE_LABELS[stage]}
-                    </span>
-                  </div>
-                ))}
-              </div>
+            <div className="flex flex-wrap gap-1.5">
+              {stagesToShow.map((stage) => (
+                <Badge
+                  key={stage}
+                  variant="outline"
+                  className="text-xs font-normal"
+                >
+                  <span className="font-semibold">{candidatesByStage[stage]}</span>
+                  <span className="ml-1">{PIPELINE_STAGE_LABELS[stage]}</span>
+                </Badge>
+              ))}
             </div>
           )}
 
-          <div className="mt-4 flex items-center justify-between pt-4 border-t">
-            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-              <Users className="h-4 w-4" />
-              <span>{totalCandidates} candidate{totalCandidates !== 1 ? 's' : ''}</span>
-            </div>
-            <div className="flex items-center gap-1 text-sm group-hover:gap-2 transition-all">
+          {/* Footer: View Pipeline Link */}
+          <div className="flex justify-end pt-2 border-t">
+            <div className="flex items-center gap-1 text-sm text-primary group-hover:gap-2 transition-all font-medium">
               View Pipeline
               <ArrowRight className="h-4 w-4" />
             </div>

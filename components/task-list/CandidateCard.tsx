@@ -25,34 +25,43 @@ export function CandidateCard({ candidate, onStatusChange }: CandidateCardProps)
   }[candidate.source];
 
   return (
-    <div className="rounded-lg border bg-card p-4 text-card-foreground">
-      <div className="flex items-start justify-between gap-3">
+    <div className="rounded-lg border bg-card p-3 text-card-foreground hover:shadow-md transition-shadow">
+      {/* Header: Name + Time in Stage */}
+      <div className="flex items-start justify-between gap-3 mb-2">
         <div className="flex-1 min-w-0">
-          <div className="font-medium text-base">{candidate.name}</div>
-          <div className="flex items-center gap-1 text-xs text-muted-foreground mt-1">
-            <Mail className="h-3 w-3" />
-            {candidate.email}
-          </div>
-          <Badge variant="outline" className="text-xs mt-2">
-            {sourceLabel}
-          </Badge>
+          <div className="font-semibold text-sm truncate">{candidate.name}</div>
         </div>
 
-        <div className={`flex items-center gap-1 text-xs whitespace-nowrap ${isOverdue ? 'text-destructive font-medium' : 'text-muted-foreground'}`}>
-          <Clock className="h-3 w-3" />
-          {daysInStage}d
-          {isOverdue && ' ⚠️'}
+        {/* Time in Stage - Prominent */}
+        <div className={`flex flex-col items-end shrink-0 ${isOverdue ? 'text-destructive' : 'text-muted-foreground'}`}>
+          <div className="flex items-center gap-1">
+            <Clock className="h-3.5 w-3.5" />
+            <span className="text-lg font-bold leading-none">{daysInStage}</span>
+            <span className="text-xs font-medium">d</span>
+          </div>
+          {isOverdue && <span className="text-xs font-medium mt-0.5">Overdue ⚠️</span>}
         </div>
       </div>
 
-      <div className="mt-4">
-        <label className="text-xs font-medium text-muted-foreground block mb-2">
-          Update Status
-        </label>
+      {/* Email - Condensed */}
+      <div className="flex items-center gap-1 text-xs text-muted-foreground mb-2 truncate">
+        <Mail className="h-3 w-3 shrink-0" />
+        <span className="truncate">{candidate.email}</span>
+      </div>
+
+      {/* Source Badge - Smaller */}
+      <div className="mb-3">
+        <Badge variant="outline" className="text-xs">
+          {sourceLabel}
+        </Badge>
+      </div>
+
+      {/* Status Selector - Compact */}
+      <div>
         <Select
           value={candidate.currentStage}
           onChange={(e) => onStatusChange(candidate.id, e.target.value as PipelineStage)}
-          className="w-full"
+          className="w-full text-xs"
         >
           {PIPELINE_STAGES.map((stage) => (
             <option key={stage} value={stage}>

@@ -33,8 +33,11 @@ export interface Role {
 
   // Time metrics (in business days)
   timeToFirstSubmission?: number;
-  timeToFirstQualifiedSubmission?: number;
-  timeToFirstFiveQualifiedSubmissions?: number;
+  timeToInClientProcess?: number; // Time to in-client process vs. qualified
+  timeToQualified?: number; // Time to qualified
+
+  // Revenue estimate (ballpark)
+  estimatedRevenue?: number;
 
   // Pipeline counts (calculated from candidates)
   pipelineCounts: PipelineCounts;

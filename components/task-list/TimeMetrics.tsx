@@ -2,14 +2,14 @@ import { Clock } from 'lucide-react';
 
 interface TimeMetricsProps {
   timeToFirstSubmission?: number;
-  timeToFirstQualifiedSubmission?: number;
-  timeToFirstFiveQualifiedSubmissions?: number;
+  timeToInClientProcess?: number;
+  timeToQualified?: number;
 }
 
 export function TimeMetrics({
   timeToFirstSubmission,
-  timeToFirstQualifiedSubmission,
-  timeToFirstFiveQualifiedSubmissions,
+  timeToInClientProcess,
+  timeToQualified,
 }: TimeMetricsProps) {
   return (
     <div className="flex items-center gap-4 text-xs text-muted-foreground">
@@ -20,14 +20,14 @@ export function TimeMetrics({
             <span className="font-medium">{timeToFirstSubmission}d</span> Time to 1st submit
           </div>
         )}
-        {timeToFirstQualifiedSubmission !== undefined && (
+        {timeToInClientProcess !== undefined && (
           <div>
-            <span className="font-medium">{timeToFirstQualifiedSubmission}d</span> Time to 1st qualified
+            <span className="font-medium">{timeToInClientProcess}d</span> Time to in-client process
           </div>
         )}
-        {timeToFirstFiveQualifiedSubmissions !== undefined && (
+        {timeToQualified !== undefined && (
           <div>
-            <span className="font-medium">{timeToFirstFiveQualifiedSubmissions}d</span> Time to 5 qualified
+            <span className="font-medium">{timeToQualified}d</span> Time to qualified
           </div>
         )}
       </div>

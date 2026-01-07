@@ -6,6 +6,7 @@ import {
   Role,
   Candidate,
   TalentAdvisor,
+  Member,
   ChecklistItem,
   Alert,
   PipelineStage,
@@ -15,6 +16,7 @@ import { mockClients } from '@/lib/mock-data/clients';
 import { mockRoles } from '@/lib/mock-data/roles';
 import { mockCandidates } from '@/lib/mock-data/candidates-new';
 import { mockTAs } from '@/lib/mock-data/tas';
+import { mockMembers } from '@/lib/mock-data/members';
 import { mockChecklists } from '@/lib/mock-data/checklists';
 import { mockAlerts } from '@/lib/mock-data/alerts';
 
@@ -23,6 +25,7 @@ interface DataContextType {
   roles: Role[];
   candidates: Candidate[];
   tas: TalentAdvisor[];
+  members: Member[];
   checklists: ChecklistItem[];
   alerts: Alert[];
 
@@ -40,6 +43,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
   const [roles, setRoles] = useState<Role[]>(mockRoles);
   const [candidates, setCandidates] = useState<Candidate[]>(mockCandidates);
   const [tas] = useState<TalentAdvisor[]>(mockTAs);
+  const [members] = useState<Member[]>(mockMembers);
   const [checklists, setChecklists] = useState<ChecklistItem[]>(mockChecklists);
   const [alerts, setAlerts] = useState<Alert[]>(mockAlerts);
 
@@ -93,6 +97,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
         roles,
         candidates,
         tas,
+        members,
         checklists,
         alerts,
         updateCandidateStage,

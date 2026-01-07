@@ -35,6 +35,7 @@ export interface Candidate {
 
   // Stage-specific data
   referringMemberId?: string;
+  memberPartnerId?: string; // For candidates referred by member partners
   screeningScheduledDate?: Date;
   screeningCompletedDate?: Date;
   disqualificationReason?: string;

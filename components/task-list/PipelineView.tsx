@@ -191,7 +191,8 @@ function CandidateCardKanban({
         getBorderColor()
       )}
     >
-      <div className="space-y-2">
+      <div className="space-y-2.5">
+        {/* Header: Name + Checkbox */}
         <div className="flex items-start gap-2">
           <Checkbox
             checked={isSelected}
@@ -201,39 +202,44 @@ function CandidateCardKanban({
           <div className="flex-1 min-w-0">
             <button
               onClick={() => onShowDetail(candidate)}
-              className="font-medium text-sm hover:text-primary text-left w-full"
+              className="font-semibold text-sm hover:text-primary text-left w-full truncate"
             >
               {candidate.name}
             </button>
-            <div className="flex items-center gap-1 text-xs text-muted-foreground mt-1">
-              <Mail className="h-3 w-3" />
-              <span className="truncate">{candidate.email}</span>
-            </div>
-            <Badge variant="outline" className="text-xs mt-1.5">
-              {sourceLabel}
-            </Badge>
           </div>
         </div>
 
-        <div className="flex items-center justify-between pt-1.5 pb-1 border-t border-b">
-          <div className="text-xs text-muted-foreground">Time in stage:</div>
-          <div className={cn("flex items-center gap-1.5 font-bold text-sm", getTimeColor())}>
+        {/* Email - Condensed */}
+        <div className="flex items-center gap-1 text-xs text-muted-foreground truncate">
+          <Mail className="h-3 w-3 shrink-0" />
+          <span className="truncate">{candidate.email}</span>
+        </div>
+
+        {/* Source Badge */}
+        <div>
+          <Badge variant="outline" className="text-xs">
+            {sourceLabel}
+          </Badge>
+        </div>
+
+        {/* Time in Stage - Prominent */}
+        <div className="flex items-center justify-between bg-muted/30 -mx-3 px-3 py-2">
+          <div className="text-xs font-medium text-muted-foreground">Time in stage</div>
+          <div className={cn("flex items-center gap-1.5", getTimeColor())}>
             <Clock className="h-4 w-4" />
-            <span>{daysInStage}d</span>
-            {colorLevel === 'critical' && <Bell className="h-4 w-4 animate-pulse" />}
-            {colorLevel === 'urgent' && <AlertCircle className="h-4 w-4" />}
+            <span className="text-lg font-bold leading-none">{daysInStage}</span>
+            <span className="text-xs font-medium">d</span>
+            {colorLevel === 'critical' && <Bell className="h-4 w-4 animate-pulse ml-0.5" />}
+            {colorLevel === 'urgent' && <AlertCircle className="h-4 w-4 ml-0.5" />}
           </div>
         </div>
 
-        {/* Full Status Dropdown */}
-        <div className="pt-2 border-t">
-          <label className="text-xs text-muted-foreground block mb-1">
-            Change Status:
-          </label>
+        {/* Status Dropdown - Compact */}
+        <div>
           <select
             value={candidate.currentStage}
             onChange={(e) => onStatusChange(candidate.id, e.target.value as PipelineStage)}
-            className="w-full text-xs border rounded px-2 py-1 bg-white hover:border-primary focus:border-primary focus:ring-1 focus:ring-primary outline-none"
+            className="w-full text-xs border rounded px-2 py-1.5 bg-white hover:border-primary focus:border-primary focus:ring-1 focus:ring-primary outline-none"
           >
             {PIPELINE_STAGES.map((stage) => (
               <option key={stage} value={stage}>
@@ -245,8 +251,8 @@ function CandidateCardKanban({
 
         {/* Quick Move Buttons */}
         {quickMoveOptions.length > 0 && (
-          <div className="pt-2 space-y-1">
-            <div className="text-xs text-muted-foreground mb-1">Quick Move:</div>
+          <div className="space-y-1">
+            <div className="text-xs text-muted-foreground">Quick actions</div>
             {quickMoveOptions.slice(0, 3).map((stage) => (
               <Button
                 key={stage}
