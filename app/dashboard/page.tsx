@@ -126,8 +126,8 @@ export default function DashboardPage() {
           </div>
         )}
 
-        {/* Dashboard Alerts */}
-        <DashboardAlerts alerts={dashboardAlerts} />
+        {/* Dashboard Alerts - TA view only */}
+        {userRole !== 'admin' && <DashboardAlerts alerts={dashboardAlerts} />}
 
         {sortedRoles.length === 0 ? (
           <div className="rounded-lg border border-dashed bg-muted/20 p-12 text-center">
