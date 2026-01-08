@@ -4,8 +4,10 @@ import { useCurrentUser } from '@/contexts/UserContext';
 import { useData } from '@/contexts/DataContext';
 import { useFilters } from '@/contexts/FilterContext';
 import { RoleCardLink } from '@/components/task-list/RoleCardLink';
+import { DashboardAlerts } from '@/components/task-list/DashboardAlerts';
 import { Select } from '@/components/ui/select';
 import { useMemo } from 'react';
+import { calculateDashboardAlerts } from '@/lib/utils/alert-utils';
 
 export default function DashboardPage() {
   const { currentUser, userRole } = useCurrentUser();
@@ -52,6 +54,11 @@ export default function DashboardPage() {
   const uniqueClients = useMemo(() => {
     return clients;
   }, [clients]);
+
+  // Calculate dashboard alerts for visible roles
+  const dashboardAlerts = useMemo(() => {
+    return calculateDashboardAlerts(visibleRoles, candidates, clients);
+  }, [visibleRoles, candidates, clients]);
 
   return (
     <div className="h-full overflow-y-auto px-6 py-6">
@@ -118,6 +125,9 @@ export default function DashboardPage() {
             )}
           </div>
         )}
+
+        {/* Dashboard Alerts */}
+        <DashboardAlerts alerts={dashboardAlerts} />
 
         {sortedRoles.length === 0 ? (
           <div className="rounded-lg border border-dashed bg-muted/20 p-12 text-center">
