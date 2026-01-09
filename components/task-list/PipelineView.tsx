@@ -9,16 +9,66 @@ import { getBusinessDaysSince } from '@/lib/utils/date-utils';
 import { getQuickMoveOptions, isStageUrgent, getWaitingTimeColorLevel } from '@/lib/utils/quick-move-logic';
 import { Clock, Mail, ChevronRight, AlertCircle, Bell } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 
 interface PipelineViewProps {
   candidates: Candidate[];
   onStatusChange: (candidateId: string, newStage: PipelineStage) => void;
+  highlightCandidateId?: string;
 }
 
-export function PipelineView({ candidates, onStatusChange }: PipelineViewProps) {
+export function PipelineView({ candidates, onStatusChange, highlightCandidateId }: PipelineViewProps) {
   const [selectedCandidates, setSelectedCandidates] = useState<Set<string>>(new Set());
   const [detailCandidate, setDetailCandidate] = useState<Candidate | null>(null);
+
+  // Calculate alert candidates
+  const now = new Date();
+  const alertCandidateIds = new Set<string>();
+
+  candidates.forEach(c => {
+    const daysSinceUpdate = Math.floor(
+      (now.getTime() - new Date(c.lastUpdatedDate).getTime()) / (1000 * 60 * 60 * 24)
+    );
+
+    // Qualified 3+ days
+    if (c.currentStage === 'qualified' && daysSinceUpdate >= 3) {
+      alertCandidateIds.add(c.id);
+    }
+    // Twill screen 3+ days
+    if (c.currentStage === 'twill_interview' && daysSinceUpdate >= 3) {
+      alertCandidateIds.add(c.id);
+    }
+    // New submissions (no status)
+    if (c.currentStage === 'no_status') {
+      alertCandidateIds.add(c.id);
+    }
+    // Client process 5+ days (with alert cleared check)
+    if (c.currentStage === 'in_client_process') {
+      if (c.alertCleared && c.alertClearedDate) {
+        const daysSinceCleared = Math.floor(
+          (now.getTime() - new Date(c.alertClearedDate).getTime()) / (1000 * 60 * 60 * 24)
+        );
+        if (daysSinceCleared >= 5) {
+          alertCandidateIds.add(c.id);
+        }
+      } else if (daysSinceUpdate >= 5) {
+        alertCandidateIds.add(c.id);
+      }
+    }
+    // Final stages 3+ days (with alert cleared check)
+    if (c.currentStage === 'final_stages') {
+      if (c.alertCleared && c.alertClearedDate) {
+        const daysSinceCleared = Math.floor(
+          (now.getTime() - new Date(c.alertClearedDate).getTime()) / (1000 * 60 * 60 * 24)
+        );
+        if (daysSinceCleared >= 3) {
+          alertCandidateIds.add(c.id);
+        }
+      } else if (daysSinceUpdate >= 3) {
+        alertCandidateIds.add(c.id);
+      }
+    }
+  });
 
   // Group candidates by stage and sort by days in stage (longest first)
   const candidatesByStage = PIPELINE_STAGES.reduce((acc, stage) => {
@@ -58,14 +108,19 @@ export function PipelineView({ candidates, onStatusChange }: PipelineViewProps) 
     if (stage.includes('rejection') || stage === 'unqualified') {
       return 'bg-red-50 border-red-200';
     }
-    if (stage === 'signed_offer') {
-      return 'bg-green-50 border-green-200';
-    }
-    if (stage === 'verbal_offer' || stage === 'final_stages') {
-      return 'bg-emerald-50 border-emerald-200';
+    // Leafish dark green for final stages
+    if (stage === 'signed_offer' || stage === 'verbal_offer' || stage === 'final_stages') {
+      return 'bg-green-600/10 border-green-600/30';
     }
     if (stage === 'no_status') {
       return 'bg-gray-50 border-gray-200';
+    }
+    if (stage === 'fit_and_hold') {
+      return 'bg-orange-50 border-orange-200';
+    }
+    // Purple for intro_request_made, in_client_process, middle_stages
+    if (stage === 'intro_request_made' || stage === 'in_client_process' || stage === 'middle_stages') {
+      return 'bg-purple-50 border-purple-200';
     }
     return 'bg-blue-50 border-blue-200';
   };
@@ -109,6 +164,7 @@ export function PipelineView({ candidates, onStatusChange }: PipelineViewProps) 
                         isSelected={selectedCandidates.has(candidate.id)}
                         onToggleSelect={handleToggleSelect}
                         onShowDetail={setDetailCandidate}
+                        isHighlighted={highlightCandidateId === candidate.id}
                       />
                     ))
                   )}
@@ -146,6 +202,7 @@ interface CandidateCardKanbanProps {
   isSelected: boolean;
   onToggleSelect: (candidateId: string) => void;
   onShowDetail: (candidate: Candidate) => void;
+  isHighlighted?: boolean;
 }
 
 function CandidateCardKanban({
@@ -153,10 +210,22 @@ function CandidateCardKanban({
   onStatusChange,
   isSelected,
   onToggleSelect,
-  onShowDetail
+  onShowDetail,
+  isHighlighted = false
 }: CandidateCardKanbanProps) {
+  const cardRef = useRef<HTMLDivElement>(null);
   const daysInStage = getBusinessDaysSince(candidate.stageEnteredDate);
   const colorLevel = getWaitingTimeColorLevel(candidate.currentStage, daysInStage);
+
+  // Scroll to card when highlighted
+  useEffect(() => {
+    if (isHighlighted && cardRef.current) {
+      // Wait a bit for the DOM to settle, then scroll
+      setTimeout(() => {
+        cardRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }, 300);
+    }
+  }, [isHighlighted]);
 
   // Get smart quick move options
   const quickMoveOptions = getQuickMoveOptions(candidate.currentStage);
@@ -164,7 +233,7 @@ function CandidateCardKanban({
   // Get referral origin label
   const sourceLabel = {
     member_referral: 'Member',
-    member_partner: 'Member Plus',
+    member_partner: 'Member Partner',
     ta_sourced: 'TA Sourced',
   }[candidate.source];
 
@@ -185,9 +254,11 @@ function CandidateCardKanban({
 
   return (
     <div
+      ref={cardRef}
       className={cn(
         'rounded-lg border bg-white p-3 shadow-sm hover:shadow-md transition-all',
         isSelected && 'ring-2 ring-primary',
+        isHighlighted && 'ring-4 ring-yellow-400 bg-yellow-50 animate-pulse',
         getBorderColor()
       )}
     >

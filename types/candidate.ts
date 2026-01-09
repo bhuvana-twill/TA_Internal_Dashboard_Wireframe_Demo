@@ -43,4 +43,6 @@ export interface Candidate {
 
   // Flags
   memberNotified: boolean;
+  alertCleared?: boolean; // Track if user has cleared the alert for this candidate
+  alertClearedDate?: Date; // When the alert was cleared
 }

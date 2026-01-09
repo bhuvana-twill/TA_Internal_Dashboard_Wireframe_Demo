@@ -34,6 +34,7 @@ interface DataContextType {
   toggleChecklistItem: (itemId: string) => void;
   dismissAlert: (alertId: string) => void;
   updateRolePriority: (roleId: string, priority: RolePriority) => void;
+  clearCandidateAlert: (candidateId: string) => void;
 }
 
 const DataContext = createContext<DataContextType | undefined>(undefined);
@@ -90,6 +91,20 @@ export function DataProvider({ children }: { children: ReactNode }) {
     );
   };
 
+  const clearCandidateAlert = (candidateId: string) => {
+    setCandidates(prev =>
+      prev.map(candidate =>
+        candidate.id === candidateId
+          ? {
+              ...candidate,
+              alertCleared: true,
+              alertClearedDate: new Date(),
+            }
+          : candidate
+      )
+    );
+  };
+
   return (
     <DataContext.Provider
       value={{
@@ -104,6 +119,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
         toggleChecklistItem,
         dismissAlert,
         updateRolePriority,
+        clearCandidateAlert,
       }}
     >
       {children}

@@ -5,9 +5,11 @@ import { useData } from '@/contexts/DataContext';
 import { useFilters } from '@/contexts/FilterContext';
 import { RoleCardLink } from '@/components/task-list/RoleCardLink';
 import { DashboardAlerts } from '@/components/task-list/DashboardAlerts';
+import { AdminSummaryMetrics } from '@/components/task-list/AdminSummaryMetrics';
 import { Select } from '@/components/ui/select';
 import { useMemo } from 'react';
 import { calculateDashboardAlerts } from '@/lib/utils/alert-utils';
+import { DollarSign } from 'lucide-react';
 
 export default function DashboardPage() {
   const { currentUser, userRole } = useCurrentUser();
@@ -60,17 +62,45 @@ export default function DashboardPage() {
     return calculateDashboardAlerts(visibleRoles, candidates, clients);
   }, [visibleRoles, candidates, clients]);
 
+  // Calculate booked revenue (signed_offer stage)
+  const bookedRevenue = useMemo(() => {
+    return visibleRoles.reduce((total, role) => {
+      const roleCandidates = candidates.filter(c => c.roleId === role.id);
+      const hasSignedOffer = roleCandidates.some(c => c.currentStage === 'signed_offer');
+      return hasSignedOffer ? total + (role.estimatedRevenue || 0) : total;
+    }, 0);
+  }, [visibleRoles, candidates]);
+
   return (
     <div className="h-full overflow-y-auto px-6 py-6">
       <div className="mx-auto max-w-7xl space-y-6">
-        <div>
-          <h2 className="text-3xl font-bold tracking-tight">{currentUser.name.split(' ')[0]}'s Dashboard</h2>
-          <p className="text-muted-foreground mt-1">
-            {userRole === 'admin'
-              ? `Viewing all ${visibleRoles.length} roles across all TAs`
-              : `Viewing your ${visibleRoles.length} assigned roles`}
-          </p>
+        {/* Dashboard Header with Booked Revenue */}
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <h2 className="text-3xl font-bold tracking-tight">{currentUser.name.split(' ')[0]}'s Dashboard</h2>
+            <p className="text-muted-foreground mt-1">
+              {userRole === 'admin'
+                ? `Viewing all ${visibleRoles.length} roles across all TAs`
+                : `Viewing your ${visibleRoles.length} assigned roles`}
+            </p>
+          </div>
+
+          {/* Booked Revenue */}
+          <div className="bg-gradient-to-br from-primary/5 to-primary/10 border border-primary/20 rounded-lg p-4 min-w-[200px]">
+            <div className="flex items-center gap-2 text-sm text-primary/70 mb-1">
+              <DollarSign className="h-4 w-4" />
+              <span className="font-medium">Booked Revenue</span>
+            </div>
+            <div className="text-2xl font-bold text-primary">
+              ${(bookedRevenue / 1000).toFixed(0)}k
+            </div>
+          </div>
         </div>
+
+        {/* Admin Summary Metrics */}
+        {userRole === 'admin' && (
+          <AdminSummaryMetrics roles={visibleRoles} candidates={candidates} />
+        )}
 
         {/* Filters for admin view */}
         {userRole === 'admin' && (

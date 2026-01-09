@@ -1,29 +1,39 @@
 import { Candidate, Role, Client } from '@/types';
 import { getBusinessDaysSince } from './date-utils';
 
+export interface CandidateAlert {
+  candidate: Candidate;
+  daysInStage: number;
+  alertType: 'new' | 'qualified' | 'twill_screen' | 'client_process' | 'final_stages';
+}
+
 export interface RoleAlert {
   roleId: string;
   roleTitle: string;
   clientName: string;
-  candidates: Candidate[];
+  candidates: CandidateAlert[];
 }
 
 export interface DashboardAlerts {
   critical: {
-    noStatus5Days: RoleAlert[];
+    clientProcess5Days: RoleAlert[];
   };
   urgent: {
-    noStatus3Days: RoleAlert[];
     newSubmissions: RoleAlert[];
-  };
-  warning: {
-    noStatus2Days: RoleAlert[];
+    qualified3Days: RoleAlert[];
+    twillScreen3Days: RoleAlert[];
+    finalStages3Days: RoleAlert[];
   };
   totalCount: number;
 }
 
 /**
- * Calculate all alerts across the dashboard
+ * Calculate all alerts across the dashboard with new rules:
+ * - New candidate status: Until cleared (cleared automatically on stage change)
+ * - Qualified status: Flag after 3+ days without update (cleared automatically on stage change)
+ * - Twill screen status: Flag after 3+ days without update (cleared automatically on stage change)
+ * - Client process: Alert every 5 business days for follow-up (only cleared manually, re-surfaces after 5 days)
+ * - Final stages: Alert every 3 days (only cleared manually, re-surfaces after 3 days)
  */
 export function calculateDashboardAlerts(
   roles: Role[],
@@ -33,10 +43,11 @@ export function calculateDashboardAlerts(
   const now = new Date();
   const oneDayAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000);
 
-  const noStatus5DaysRoles: RoleAlert[] = [];
-  const noStatus3DaysRoles: RoleAlert[] = [];
-  const noStatus2DaysRoles: RoleAlert[] = [];
   const newSubmissionsRoles: RoleAlert[] = [];
+  const qualified3DaysRoles: RoleAlert[] = [];
+  const twillScreen3DaysRoles: RoleAlert[] = [];
+  const clientProcess5DaysRoles: RoleAlert[] = [];
+  const finalStages3DaysRoles: RoleAlert[] = [];
 
   roles.forEach(role => {
     const roleCandidates = candidates.filter(c => c.roleId === role.id);
@@ -44,52 +55,84 @@ export function calculateDashboardAlerts(
 
     if (!client) return;
 
-    // Check for candidates in no_status for various durations
-    const noStatusCandidates = roleCandidates.filter(c => c.currentStage === 'no_status');
+    // New submissions in last 24 hours (auto-clears when stage changes)
+    const newCandidates = roleCandidates
+      .filter(c => {
+        const submittedDate = new Date(c.submittedDate);
+        // Show if submitted in last 24 hours, only clear when they move to a different stage
+        return submittedDate >= oneDayAgo;
+      })
+      .map(c => ({
+        candidate: c,
+        daysInStage: 0,
+        alertType: 'new' as const,
+      }));
 
-    const noStatus5Days = noStatusCandidates.filter(c =>
-      getBusinessDaysSince(new Date(c.stageEnteredDate)) >= 5
-    );
-    const noStatus3Days = noStatusCandidates.filter(c => {
-      const days = getBusinessDaysSince(new Date(c.stageEnteredDate));
-      return days >= 3 && days < 5;
-    });
-    const noStatus2Days = noStatusCandidates.filter(c => {
-      const days = getBusinessDaysSince(new Date(c.stageEnteredDate));
-      return days >= 2 && days < 3;
-    });
+    // Qualified status - 3+ days without update (auto-clears when stage changes)
+    const qualifiedCandidates = roleCandidates
+      .filter(c => {
+        if (c.currentStage !== 'qualified') return false;
+        const daysSinceUpdate = getBusinessDaysSince(new Date(c.lastUpdatedDate));
+        return daysSinceUpdate >= 3;
+      })
+      .map(c => ({
+        candidate: c,
+        daysInStage: getBusinessDaysSince(new Date(c.lastUpdatedDate)),
+        alertType: 'qualified' as const,
+      }));
 
-    // Check for new submissions in last 24 hours
-    const newCandidates = roleCandidates.filter(c => {
-      const submittedDate = new Date(c.submittedDate);
-      return submittedDate >= oneDayAgo;
-    });
+    // Twill screen status - 3+ days without update (auto-clears when stage changes)
+    const twillScreenCandidates = roleCandidates
+      .filter(c => {
+        if (c.currentStage !== 'twill_interview') return false;
+        const daysSinceUpdate = getBusinessDaysSince(new Date(c.lastUpdatedDate));
+        return daysSinceUpdate >= 3;
+      })
+      .map(c => ({
+        candidate: c,
+        daysInStage: getBusinessDaysSince(new Date(c.lastUpdatedDate)),
+        alertType: 'twill_screen' as const,
+      }));
+
+    // Client process - alert every 5 business days (manual clear, re-surfaces after 5 days)
+    const clientProcessCandidates = roleCandidates
+      .filter(c => {
+        if (c.currentStage !== 'in_client_process') return false;
+        const daysSinceUpdate = getBusinessDaysSince(new Date(c.lastUpdatedDate));
+        // If alert was cleared, check if 5 days have passed since clearing
+        if (c.alertCleared && c.alertClearedDate) {
+          const daysSinceCleared = getBusinessDaysSince(new Date(c.alertClearedDate));
+          return daysSinceCleared >= 5;
+        }
+        // Otherwise, show if 5+ days since update
+        return daysSinceUpdate >= 5;
+      })
+      .map(c => ({
+        candidate: c,
+        daysInStage: getBusinessDaysSince(new Date(c.lastUpdatedDate)),
+        alertType: 'client_process' as const,
+      }));
+
+    // Final stages - alert every 3 days (manual clear, re-surfaces after 3 days)
+    const finalStagesCandidates = roleCandidates
+      .filter(c => {
+        if (c.currentStage !== 'final_stages') return false;
+        const daysSinceUpdate = getBusinessDaysSince(new Date(c.lastUpdatedDate));
+        // If alert was cleared, check if 3 days have passed since clearing
+        if (c.alertCleared && c.alertClearedDate) {
+          const daysSinceCleared = getBusinessDaysSince(new Date(c.alertClearedDate));
+          return daysSinceCleared >= 3;
+        }
+        // Otherwise, show if 3+ days since update
+        return daysSinceUpdate >= 3;
+      })
+      .map(c => ({
+        candidate: c,
+        daysInStage: getBusinessDaysSince(new Date(c.lastUpdatedDate)),
+        alertType: 'final_stages' as const,
+      }));
 
     // Add to alerts if any candidates match
-    if (noStatus5Days.length > 0) {
-      noStatus5DaysRoles.push({
-        roleId: role.id,
-        roleTitle: role.title,
-        clientName: client.company,
-        candidates: noStatus5Days,
-      });
-    }
-    if (noStatus3Days.length > 0) {
-      noStatus3DaysRoles.push({
-        roleId: role.id,
-        roleTitle: role.title,
-        clientName: client.company,
-        candidates: noStatus3Days,
-      });
-    }
-    if (noStatus2Days.length > 0) {
-      noStatus2DaysRoles.push({
-        roleId: role.id,
-        roleTitle: role.title,
-        clientName: client.company,
-        candidates: noStatus2Days,
-      });
-    }
     if (newCandidates.length > 0) {
       newSubmissionsRoles.push({
         roleId: role.id,
@@ -98,25 +141,57 @@ export function calculateDashboardAlerts(
         candidates: newCandidates,
       });
     }
+    if (qualifiedCandidates.length > 0) {
+      qualified3DaysRoles.push({
+        roleId: role.id,
+        roleTitle: role.title,
+        clientName: client.company,
+        candidates: qualifiedCandidates,
+      });
+    }
+    if (twillScreenCandidates.length > 0) {
+      twillScreen3DaysRoles.push({
+        roleId: role.id,
+        roleTitle: role.title,
+        clientName: client.company,
+        candidates: twillScreenCandidates,
+      });
+    }
+    if (clientProcessCandidates.length > 0) {
+      clientProcess5DaysRoles.push({
+        roleId: role.id,
+        roleTitle: role.title,
+        clientName: client.company,
+        candidates: clientProcessCandidates,
+      });
+    }
+    if (finalStagesCandidates.length > 0) {
+      finalStages3DaysRoles.push({
+        roleId: role.id,
+        roleTitle: role.title,
+        clientName: client.company,
+        candidates: finalStagesCandidates,
+      });
+    }
   });
 
-  // Calculate total count (prioritize higher severity)
+  // Calculate total count (each category counts as 1)
   let totalCount = 0;
-  if (noStatus5DaysRoles.length > 0) totalCount++;
-  if (noStatus3DaysRoles.length > 0 && noStatus5DaysRoles.length === 0) totalCount++;
-  if (noStatus2DaysRoles.length > 0 && noStatus5DaysRoles.length === 0 && noStatus3DaysRoles.length === 0) totalCount++;
+  if (clientProcess5DaysRoles.length > 0) totalCount++;
   if (newSubmissionsRoles.length > 0) totalCount++;
+  if (qualified3DaysRoles.length > 0) totalCount++;
+  if (twillScreen3DaysRoles.length > 0) totalCount++;
+  if (finalStages3DaysRoles.length > 0) totalCount++;
 
   return {
     critical: {
-      noStatus5Days: noStatus5DaysRoles,
+      clientProcess5Days: clientProcess5DaysRoles,
     },
     urgent: {
-      noStatus3Days: noStatus3DaysRoles,
       newSubmissions: newSubmissionsRoles,
-    },
-    warning: {
-      noStatus2Days: noStatus2DaysRoles,
+      qualified3Days: qualified3DaysRoles,
+      twillScreen3Days: twillScreen3DaysRoles,
+      finalStages3Days: finalStages3DaysRoles,
     },
     totalCount,
   };

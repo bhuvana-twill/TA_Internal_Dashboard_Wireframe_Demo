@@ -86,7 +86,7 @@ export function RoleCardLink({ role, client, candidates, assignedTA }: RoleCardL
 
   return (
     <Link href={`/dashboard/role/${role.id}`}>
-      <Card className="hover:shadow-lg transition-all cursor-pointer group">
+      <Card className="hover:shadow-lg hover:border-primary/30 transition-all cursor-pointer group">
         <CardHeader className="space-y-4">
           {/* Header: Company (prominent) + Priority + Alerts */}
           <div className="flex items-start justify-between gap-3">

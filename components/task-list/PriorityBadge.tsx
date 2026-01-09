@@ -10,7 +10,7 @@ export function PriorityBadge({ priority }: PriorityBadgeProps) {
   const config = {
     high: {
       label: 'High Priority',
-      className: 'bg-black text-white border-black',
+      className: 'bg-primary text-primary-foreground border-primary',
       description: 'Client responsive, ready to hire',
     },
     low: {

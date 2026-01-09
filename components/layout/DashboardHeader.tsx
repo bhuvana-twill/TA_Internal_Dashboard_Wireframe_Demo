@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import Image from 'next/image';
 import { usePathname } from 'next/navigation';
 import { useCurrentUser } from '@/contexts/UserContext';
 import { RoleSwitcher } from './RoleSwitcher';
@@ -17,12 +18,22 @@ export function DashboardHeader() {
   const pathname = usePathname();
 
   return (
-    <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+    <header className="sticky top-0 z-50 w-full border-b border-border/40 bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/80 shadow-sm">
       <div className="flex h-16 items-center justify-between px-6">
         <div className="flex items-center gap-6">
-          <div className="flex items-center gap-2">
-            <h1 className="text-xl font-bold">Twill</h1>
-          </div>
+          <Link href="/dashboard" className="flex items-center gap-2 hover:opacity-80 transition-opacity">
+            {/* Twill Logo - Add logo image to /public/twill-logo.svg or .png */}
+            <div className="flex items-center h-8">
+              <Image
+                src="/twill-logo.svg"
+                alt="Twill"
+                width={120}
+                height={32}
+                className="h-8 w-auto"
+                priority
+              />
+            </div>
+          </Link>
 
           {/* Navigation moved to header */}
           <nav className="flex items-center gap-1">

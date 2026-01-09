@@ -1,21 +1,25 @@
 'use client';
 
-import { useParams, useRouter } from 'next/navigation';
+import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { useCurrentUser } from '@/contexts/UserContext';
 import { useData } from '@/contexts/DataContext';
 import { PipelineView } from '@/components/task-list/PipelineView';
 import { PriorityBadge } from '@/components/task-list/PriorityBadge';
-import { SystemMessages } from '@/components/task-list/SystemMessages';
+import { RoleAlerts } from '@/components/task-list/RoleAlerts';
 import { Users } from 'lucide-react';
 import { useMemo } from 'react';
 
 export default function RolePipelinePage() {
   const params = useParams();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { currentUser, userRole } = useCurrentUser();
   const { roles, candidates, clients, updateCandidateStage } = useData();
 
   const roleId = params.roleId as string;
+
+  // Get highlight query param for candidate highlighting
+  const highlightCandidateId = searchParams.get('highlight');
   const role = roles.find(r => r.id === roleId);
   const client = role ? clients.find(c => c.id === role.clientId) : null;
   const roleCandidates = candidates.filter(c => c.roleId === roleId);
@@ -61,7 +65,72 @@ export default function RolePipelinePage() {
           {sortedRoles.map((r) => {
             const isActive = r.id === roleId;
             const roleClient = clients.find(c => c.id === r.clientId);
-            const candidateCount = candidates.filter(c => c.roleId === r.id).length;
+            const roleCandidates = candidates.filter(c => c.roleId === r.id);
+            const candidateCount = roleCandidates.length;
+
+            // Calculate action items (same logic as RoleCardLink)
+            const now = new Date();
+            const oneDayAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+            const newCandidates = roleCandidates.filter(c => {
+              const submittedDate = new Date(c.submittedDate);
+              return submittedDate >= oneDayAgo;
+            }).length;
+
+            // Count qualified candidates with 3+ days without update
+            const qualifiedAlerts = roleCandidates.filter(c => {
+              if (c.currentStage !== 'qualified') return false;
+              const daysSinceUpdate = Math.floor(
+                (now.getTime() - new Date(c.lastUpdatedDate).getTime()) / (1000 * 60 * 60 * 24)
+              );
+              return daysSinceUpdate >= 3;
+            }).length;
+
+            // Count twill interview candidates with 3+ days without update
+            const twillAlerts = roleCandidates.filter(c => {
+              if (c.currentStage !== 'twill_interview') return false;
+              const daysSinceUpdate = Math.floor(
+                (now.getTime() - new Date(c.lastUpdatedDate).getTime()) / (1000 * 60 * 60 * 24)
+              );
+              return daysSinceUpdate >= 3;
+            }).length;
+
+            // Count client process candidates with 5+ days without update
+            const clientProcessAlerts = roleCandidates.filter(c => {
+              if (c.currentStage !== 'in_client_process') return false;
+              const daysSinceUpdate = Math.floor(
+                (now.getTime() - new Date(c.lastUpdatedDate).getTime()) / (1000 * 60 * 60 * 24)
+              );
+              if (c.alertCleared && c.alertClearedDate) {
+                const daysSinceCleared = Math.floor(
+                  (now.getTime() - new Date(c.alertClearedDate).getTime()) / (1000 * 60 * 60 * 24)
+                );
+                return daysSinceCleared >= 5;
+              }
+              return daysSinceUpdate >= 5;
+            }).length;
+
+            // Count final stages candidates with 3+ days without update
+            const finalStagesAlerts = roleCandidates.filter(c => {
+              if (c.currentStage !== 'final_stages') return false;
+              const daysSinceUpdate = Math.floor(
+                (now.getTime() - new Date(c.lastUpdatedDate).getTime()) / (1000 * 60 * 60 * 24)
+              );
+              if (c.alertCleared && c.alertClearedDate) {
+                const daysSinceCleared = Math.floor(
+                  (now.getTime() - new Date(c.alertClearedDate).getTime()) / (1000 * 60 * 60 * 24)
+                );
+                return daysSinceCleared >= 3;
+              }
+              return daysSinceUpdate >= 3;
+            }).length;
+
+            // Total action items
+            let actionItemCount = 0;
+            if (newCandidates > 0) actionItemCount++;
+            if (qualifiedAlerts > 0) actionItemCount++;
+            if (twillAlerts > 0) actionItemCount++;
+            if (clientProcessAlerts > 0) actionItemCount++;
+            if (finalStagesAlerts > 0) actionItemCount++;
 
             return (
               <button
@@ -82,11 +151,22 @@ export default function RolePipelinePage() {
                     <Users className="h-3 w-3" />
                     {candidateCount}
                   </div>
-                  {!isActive && (
-                    <div className="scale-75 origin-right">
-                      <PriorityBadge priority={r.priority} />
-                    </div>
-                  )}
+                  <div className="flex items-center gap-2">
+                    {actionItemCount > 0 && (
+                      <div className={`flex items-center justify-center h-5 min-w-5 px-1.5 rounded text-xs font-semibold ${
+                        isActive
+                          ? 'bg-primary-foreground text-primary'
+                          : 'bg-destructive text-destructive-foreground'
+                      }`}>
+                        {actionItemCount}
+                      </div>
+                    )}
+                    {!isActive && (
+                      <div className="scale-75 origin-right">
+                        <PriorityBadge priority={r.priority} />
+                      </div>
+                    )}
+                  </div>
                 </div>
               </button>
             );
@@ -109,10 +189,15 @@ export default function RolePipelinePage() {
         </div>
 
         <div className="flex-1 overflow-auto p-6">
-          <SystemMessages candidates={roleCandidates} />
+          <RoleAlerts
+            role={role}
+            candidates={roleCandidates}
+            clientName={client.company}
+          />
           <PipelineView
             candidates={roleCandidates}
             onStatusChange={updateCandidateStage}
+            highlightCandidateId={highlightCandidateId || undefined}
           />
         </div>
       </div>
