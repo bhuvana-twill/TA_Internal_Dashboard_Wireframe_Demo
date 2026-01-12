@@ -30,6 +30,7 @@ export interface Role {
   priority: RolePriority;
   createdDate: Date;
   postedToPlatform: boolean;
+  dateOfLastSubmission?: Date; // Date of the most recent candidate submission
 
   // Time metrics (in business days)
   timeToFirstSubmission?: number;

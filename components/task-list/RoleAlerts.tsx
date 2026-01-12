@@ -154,7 +154,38 @@ export function RoleAlerts({ role, candidates, clientName }: RoleAlertsProps) {
         {/* Collapsible Content */}
         {isExpanded && (
           <div className="space-y-3 mt-4">
-          {/* 1. Qualified 3+ Days */}
+          {/* 1. Candidates Awaiting Status Assignment */}
+          {newSubmissions.length > 0 && (
+            <div className="rounded-lg border border-gray-200 bg-gray-50 p-3">
+              <div className="flex items-center gap-2 mb-2">
+                <Clock className="h-4 w-4 text-gray-600" />
+                <span className="font-semibold text-sm text-gray-700">
+                  Candidates Awaiting Status Assignment
+                </span>
+                <Badge className="ml-auto shrink-0 bg-gray-500 hover:bg-gray-600 text-white">
+                  {newSubmissions.length} candidate{newSubmissions.length !== 1 ? 's' : ''}
+                </Badge>
+              </div>
+              <div className="space-y-1">
+                {newSubmissions.map(({ candidate }) => (
+                  <div
+                    key={candidate.id}
+                    className="flex items-center justify-between text-xs bg-background/50 rounded px-2 py-1 hover:bg-background/70 transition-colors cursor-pointer group"
+                    onClick={() => handleCandidateClick(candidate.id)}
+                  >
+                    <span className="truncate group-hover:underline">
+                      {candidate.name}
+                    </span>
+                    <span className="text-muted-foreground text-xs shrink-0">
+                      Take action in kanban to clear alert
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* 2. Qualified 3+ Days */}
           {qualifiedAlerts.length > 0 && (
             <div className="rounded-lg border border-blue-200 bg-blue-50 p-3">
               <div className="flex items-center gap-2 mb-2">
@@ -185,7 +216,7 @@ export function RoleAlerts({ role, candidates, clientName }: RoleAlertsProps) {
             </div>
           )}
 
-          {/* 2. Twill Screen 3+ Days */}
+          {/* 3. Twill Screen 3+ Days */}
           {twillScreenAlerts.length > 0 && (
             <div className="rounded-lg border border-blue-200 bg-blue-50 p-3">
               <div className="flex items-center gap-2 mb-2">
@@ -206,37 +237,6 @@ export function RoleAlerts({ role, candidates, clientName }: RoleAlertsProps) {
                   >
                     <span className="truncate group-hover:underline">
                       {candidate.name} ({daysInStage}d)
-                    </span>
-                    <span className="text-muted-foreground text-xs shrink-0">
-                      Take action in kanban to clear alert
-                    </span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* 3. New Submissions */}
-          {newSubmissions.length > 0 && (
-            <div className="rounded-lg border border-gray-200 bg-gray-50 p-3">
-              <div className="flex items-center gap-2 mb-2">
-                <Clock className="h-4 w-4 text-gray-600" />
-                <span className="font-semibold text-sm text-gray-700">
-                  Candidates Awaiting Status Assignment
-                </span>
-                <Badge className="ml-auto shrink-0 bg-gray-500 hover:bg-gray-600 text-white">
-                  {newSubmissions.length} candidate{newSubmissions.length !== 1 ? 's' : ''}
-                </Badge>
-              </div>
-              <div className="space-y-1">
-                {newSubmissions.map(({ candidate }) => (
-                  <div
-                    key={candidate.id}
-                    className="flex items-center justify-between text-xs bg-background/50 rounded px-2 py-1 hover:bg-background/70 transition-colors cursor-pointer group"
-                    onClick={() => handleCandidateClick(candidate.id)}
-                  >
-                    <span className="truncate group-hover:underline">
-                      {candidate.name}
                     </span>
                     <span className="text-muted-foreground text-xs shrink-0">
                       Take action in kanban to clear alert

@@ -8,9 +8,10 @@ import { Badge } from '@/components/ui/badge';
 import { PriorityBadge } from './PriorityBadge';
 import { PipelineStages } from './PipelineStages';
 import { CandidateList } from './CandidateList';
-import { ChevronDown, ChevronUp, Users, Clock, DollarSign, Target } from 'lucide-react';
+import { ChevronDown, ChevronUp, Users, Clock, DollarSign, Target, Calendar } from 'lucide-react';
 import { PIPELINE_STAGE_LABELS } from '@/lib/constants/pipeline-stages';
 import { calculatePlacementProbability } from '@/lib/utils/probability-utils';
+import { differenceInDays } from 'date-fns';
 
 interface RoleCardProps {
   role: Role;
@@ -37,9 +38,8 @@ export function RoleCard({ role, client, candidates, onStatusChange }: RoleCardP
     return acc;
   }, {} as Record<PipelineStage, number>);
 
-  // Key stages to display
+  // Key stages to display - with no_status at the top
   const keyStages: PipelineStage[] = [
-    'no_status',
     'qualified',
     'twill_interview',
     'submitted',
@@ -49,9 +49,11 @@ export function RoleCard({ role, client, candidates, onStatusChange }: RoleCardP
     'signed_offer',
   ];
 
-  const stagesToShow = keyStages
-    .filter(stage => candidatesByStage[stage] > 0)
-    .slice(0, 4);
+  // Filter stages that have candidates, then prepend 'no_status' if it exists
+  const stagesWithCandidates = keyStages.filter(stage => candidatesByStage[stage] > 0);
+  const stagesToShow = candidatesByStage['no_status'] > 0
+    ? ['no_status' as PipelineStage, ...stagesWithCandidates].slice(0, 4)
+    : stagesWithCandidates.slice(0, 4);
 
   return (
     <Card className="overflow-hidden">
@@ -91,6 +93,19 @@ export function RoleCard({ role, client, candidates, onStatusChange }: RoleCardP
             </span>
           </div>
         </div>
+
+        {/* Date of Last Submission */}
+        {role.dateOfLastSubmission && (
+          <div className="flex items-center gap-1.5 text-xs">
+            <Calendar className="h-3.5 w-3.5 text-muted-foreground" />
+            <span className="text-muted-foreground">Last submission:</span>
+            <span className="font-semibold">
+              {differenceInDays(new Date(), role.dateOfLastSubmission) === 0
+                ? 'today'
+                : `${differenceInDays(new Date(), role.dateOfLastSubmission)} days ago`}
+            </span>
+          </div>
+        )}
 
         {/* Time Metrics - Condensed */}
         {(role.timeToFirstSubmission || role.timeToInClientProcess || role.timeToQualified) && (

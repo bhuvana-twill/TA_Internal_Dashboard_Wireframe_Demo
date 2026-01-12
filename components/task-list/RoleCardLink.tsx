@@ -5,12 +5,13 @@ import { Role, Candidate, Client, PipelineStage, TalentAdvisor } from '@/types';
 import { Card, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { PriorityBadge } from './PriorityBadge';
 import { Badge } from '@/components/ui/badge';
-import { Users, ArrowRight, Clock, TrendingUp, AlertCircle, DollarSign, Target, UserCheck } from 'lucide-react';
+import { Users, ArrowRight, Clock, TrendingUp, AlertCircle, DollarSign, Target, UserCheck, Calendar } from 'lucide-react';
 import { PIPELINE_STAGE_LABELS } from '@/lib/constants/pipeline-stages';
 import { getBusinessDaysSince } from '@/lib/utils/date-utils';
 import { calculatePlacementProbability } from '@/lib/utils/probability-utils';
 import { useCurrentUser } from '@/contexts/UserContext';
 import { useData } from '@/contexts/DataContext';
+import { differenceInDays } from 'date-fns';
 
 interface RoleCardLinkProps {
   role: Role;
@@ -157,6 +158,19 @@ export function RoleCardLink({ role, client, candidates, assignedTA }: RoleCardL
                   </span>
                 </div>
               )}
+            </div>
+          )}
+
+          {/* Date of Last Submission */}
+          {role.dateOfLastSubmission && (
+            <div className="flex items-center gap-1.5 text-xs">
+              <Calendar className="h-3.5 w-3.5 text-muted-foreground" />
+              <span className="text-muted-foreground">Last submission:</span>
+              <span className="font-semibold">
+                {differenceInDays(new Date(), role.dateOfLastSubmission) === 0
+                  ? 'today'
+                  : `${differenceInDays(new Date(), role.dateOfLastSubmission)} days ago`}
+              </span>
             </div>
           )}
 

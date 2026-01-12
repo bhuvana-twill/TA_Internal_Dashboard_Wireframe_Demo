@@ -80,7 +80,55 @@ export function DashboardAlerts({ alerts }: DashboardAlertsProps) {
         {/* Alert Details */}
         {isExpanded && (
           <div className="mt-4 space-y-3">
-            {/* 1. Qualified 3+ Days */}
+            {/* 1. Candidates Awaiting Status Assignment */}
+            {alerts.urgent.newSubmissions.length > 0 && (
+              <div className="rounded-lg border border-gray-200 bg-gray-50 p-3">
+                <div className="flex items-center gap-2 mb-2">
+                  <Clock className="h-4 w-4 text-gray-600" />
+                  <span className="font-semibold text-sm text-gray-700">
+                    Candidates Awaiting Status Assignment
+                  </span>
+                </div>
+                <div className="space-y-1.5">
+                  {alerts.urgent.newSubmissions.map(roleAlert => (
+                    <div key={roleAlert.roleId} className="space-y-1">
+                      {/* Non-clickable role header */}
+                      <div className="p-2 bg-background/30 rounded">
+                        <div className="flex items-center justify-between">
+                          <div className="flex-1 min-w-0">
+                            <div className="font-medium text-sm truncate">
+                              {roleAlert.clientName} - {roleAlert.roleTitle}
+                            </div>
+                          </div>
+                          <Badge className="ml-2 shrink-0 bg-gray-500 hover:bg-gray-600 text-white">
+                            {roleAlert.candidates.length} candidate{roleAlert.candidates.length !== 1 ? 's' : ''}
+                          </Badge>
+                        </div>
+                      </div>
+                      {/* Clickable candidate cards */}
+                      <div className="ml-2 space-y-1">
+                        {roleAlert.candidates.map(candAlert => (
+                          <div
+                            key={candAlert.candidate.id}
+                            className="flex items-center justify-between text-xs bg-background/50 rounded px-2 py-1 hover:bg-background/70 transition-colors cursor-pointer group"
+                            onClick={() => handleCandidateClick(roleAlert.roleId, candAlert.candidate.id)}
+                          >
+                            <span className="truncate group-hover:underline">
+                              {candAlert.candidate.name}
+                            </span>
+                            <span className="text-muted-foreground text-xs shrink-0">
+                              Take action in kanban to clear alert
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* 2. Qualified 3+ Days */}
             {alerts.urgent.qualified3Days.length > 0 && (
               <div className="rounded-lg border border-blue-200 bg-blue-50 p-3">
                 <div className="flex items-center gap-2 mb-2">
@@ -128,7 +176,7 @@ export function DashboardAlerts({ alerts }: DashboardAlertsProps) {
               </div>
             )}
 
-            {/* 2. Twill Screen 3+ Days */}
+            {/* 3. Twill Screen 3+ Days */}
             {alerts.urgent.twillScreen3Days.length > 0 && (
               <div className="rounded-lg border border-blue-200 bg-blue-50 p-3">
                 <div className="flex items-center gap-2 mb-2">
@@ -163,54 +211,6 @@ export function DashboardAlerts({ alerts }: DashboardAlertsProps) {
                           >
                             <span className="truncate group-hover:underline">
                               {candAlert.candidate.name} ({candAlert.daysInStage}d)
-                            </span>
-                            <span className="text-muted-foreground text-xs shrink-0">
-                              Take action in kanban to clear alert
-                            </span>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* 3. New Submissions */}
-            {alerts.urgent.newSubmissions.length > 0 && (
-              <div className="rounded-lg border border-gray-200 bg-gray-50 p-3">
-                <div className="flex items-center gap-2 mb-2">
-                  <Clock className="h-4 w-4 text-gray-600" />
-                  <span className="font-semibold text-sm text-gray-700">
-                    Candidates Awaiting Status Assignment
-                  </span>
-                </div>
-                <div className="space-y-1.5">
-                  {alerts.urgent.newSubmissions.map(roleAlert => (
-                    <div key={roleAlert.roleId} className="space-y-1">
-                      {/* Non-clickable role header */}
-                      <div className="p-2 bg-background/30 rounded">
-                        <div className="flex items-center justify-between">
-                          <div className="flex-1 min-w-0">
-                            <div className="font-medium text-sm truncate">
-                              {roleAlert.clientName} - {roleAlert.roleTitle}
-                            </div>
-                          </div>
-                          <Badge className="ml-2 shrink-0 bg-gray-500 hover:bg-gray-600 text-white">
-                            {roleAlert.candidates.length} candidate{roleAlert.candidates.length !== 1 ? 's' : ''}
-                          </Badge>
-                        </div>
-                      </div>
-                      {/* Clickable candidate cards */}
-                      <div className="ml-2 space-y-1">
-                        {roleAlert.candidates.map(candAlert => (
-                          <div
-                            key={candAlert.candidate.id}
-                            className="flex items-center justify-between text-xs bg-background/50 rounded px-2 py-1 hover:bg-background/70 transition-colors cursor-pointer group"
-                            onClick={() => handleCandidateClick(roleAlert.roleId, candAlert.candidate.id)}
-                          >
-                            <span className="truncate group-hover:underline">
-                              {candAlert.candidate.name}
                             </span>
                             <span className="text-muted-foreground text-xs shrink-0">
                               Take action in kanban to clear alert
